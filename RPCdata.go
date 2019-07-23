@@ -29,7 +29,7 @@ func Decode(b []byte) (RPCdata, error) {
 	decoder := gob.NewDecoder(buf)
 	var data RPCdata
 	if err := decoder.Decode(&data); err != nil {
-		return Data{}, err
+		return RPCdata{}, err
 	}
 	return data, nil
 }
