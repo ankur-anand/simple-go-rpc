@@ -1,15 +1,22 @@
 package main
 
 import (
-	"log"
-	"reflect"
 	"fmt"
+	"io"
+	"log"
+	"net"
+	"reflect"
 )
 
 // RPCServer ...
 type RPCServer struct {
 	addr  string
 	funcs map[string]reflect.Value
+}
+
+// NewServer creates a new server
+func NewServer(addr string) *RPCServer {
+	return &RPCServer{addr: addr, funcs: make(map[string]reflect.Value)}
 }
 
 // Register the name of the function and its entries
@@ -56,4 +63,53 @@ func (s *RPCServer) Execute(req RPCdata) RPCdata {
 		er = out[len(out)-1].Interface().(error).Error()
 	}
 	return RPCdata{Name: req.Name, Args: resArgs, Err: er}
+}
+
+// Run server
+func (s *RPCServer) Run() {
+	l, err := net.Listen("tcp", s.addr)
+	if err != nil {
+		log.Printf("listen on %s err: %v\n", s.addr, err)
+		return
+	}
+	for {
+		conn, err := l.Accept()
+		if err != nil {
+			log.Printf("accept err: %v\n", err)
+			continue
+		}
+		go func() {
+			connTransport := NewTransport(conn)
+			for {
+				// read request
+				req, err := connTransport.Read()
+				if err != nil {
+					if err != io.EOF {
+						log.Printf("read err: %v\n", err)
+						return
+					}
+				}
+
+				// decode the data and pass it to execute
+				decReq, err := Decode(req)
+				if err != nil {
+					log.Printf("Error Decoding the Payload err: %v\n", err)
+					return
+				}
+				// get the executed result.
+				resP := s.Execute(decReq)
+				// encode the data back
+				b, err := Encode(resP)
+				if err != nil {
+					log.Printf("Error Encoding the Payload for response err: %v\n", err)
+					return
+				}
+				// send response to client
+				err = connTransport.Send(b)
+				if err != nil {
+					log.Printf("transport write err: %v\n", err)
+				}
+			}
+		}()
+	}
 }

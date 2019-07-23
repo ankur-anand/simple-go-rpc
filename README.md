@@ -1,6 +1,6 @@
 ## Simple GoRpc
 
-Learning RPC basic building blocks by building a simple RPC framework based on Golang.
+Learning RPC basic building blocks by building a simple RPC framework in Golang from scratch.
 
 ## RPC
 
@@ -207,3 +207,6 @@ func (s *RPCServer) Execute(req RPCdata) RPCdata {
 	return RPCdata{Name: req.Name, Args: resArgs, Err: er}
 }
 ```
+## RPC CLIENT
+
+Since the concrete implementation of the function is on the server side, the client only has the prototype of the function, so we need complete prototype of the calling function, so that we can call it.
