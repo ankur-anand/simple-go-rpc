@@ -210,3 +210,140 @@ func (s *RPCServer) Execute(req RPCdata) RPCdata {
 ## RPC CLIENT
 
 Since the concrete implementation of the function is on the server side, the client only has the prototype of the function, so we need complete prototype of the calling function, so that we can call it.
+
+```go
+func (c *Client) callRPC(rpcName string, fPtr interface{}) {
+	container := reflect.ValueOf(fPtr).Elem()
+	f := func(req []reflect.Value) []reflect.Value {
+		cReqTransport := NewTransport(c.conn)
+		errorHandler := func(err error) []reflect.Value {
+			outArgs := make([]reflect.Value, container.Type().NumOut())
+			for i := 0; i < len(outArgs)-1; i++ {
+				outArgs[i] = reflect.Zero(container.Type().Out(i))
+			}
+			outArgs[len(outArgs)-1] = reflect.ValueOf(&err).Elem()
+			return outArgs
+		}
+
+		// Process input parameters
+		inArgs := make([]interface{}, 0, len(req))
+		for _, arg := range req {
+			inArgs = append(inArgs, arg.Interface())
+		}
+
+		// ReqRPC
+		reqRPC := RPCdata{Name: rpcName, Args: inArgs}
+		b, err := Encode(reqRPC)
+		if err != nil {
+			panic(err)
+		}
+		err = cReqTransport.Send(b)
+		if err != nil {
+			errorHandler(err)
+		}
+		// receive response from server
+		rsp, err := cReqTransport.Read()
+		if err != nil { // local network error or decode error
+			return errorHandler(err)
+		}
+		rspDecode, _ := Decode(rsp)
+		if rspDecode.Err != "" { // remote server error
+			return errorHandler(errors.New(rspDecode.Err))
+		}
+
+		if len(rspDecode.Args) == 0 {
+			rspDecode.Args = make([]interface{}, container.Type().NumOut())
+		}
+		// unpackage response arguments
+		numOut := container.Type().NumOut()
+		outArgs := make([]reflect.Value, numOut)
+		for i := 0; i < numOut; i++ {
+			if i != numOut-1 { // unpackage arguments (except error)
+				if rspDecode.Args[i] == nil { // if argument is nil (gob will ignore "Zero" in transmission), set "Zero" value
+					outArgs[i] = reflect.Zero(container.Type().Out(i))
+				} else {
+					outArgs[i] = reflect.ValueOf(rspDecode.Args[i])
+				}
+			} else { // unpackage error argument
+				outArgs[i] = reflect.Zero(container.Type().Out(i))
+			}
+		}
+
+		return outArgs
+	}
+	container.Set(reflect.MakeFunc(container.Type(), f))
+}
+```
+
+### Testing our framework
+
+```go
+package main
+
+import (
+	"encoding/gob"
+	"fmt"
+	"net"
+)
+
+type User struct {
+	Name string
+	Age  int
+}
+
+var userDB = map[int]User{
+	1: User{"Ankur", 85},
+	9: User{"Anand", 25},
+	8: User{"Ankur Anand", 27},
+}
+
+func QueryUser(id int) (User, error) {
+	if u, ok := userDB[id]; ok {
+		return u, nil
+	}
+
+	return User{}, fmt.Errorf("id %d not in user db", id)
+}
+
+func main() {
+	// new Type needs to be registered
+	gob.Register(User{})
+	addr := "localhost:3212"
+	srv := NewServer(addr)
+
+	// start server
+	srv.Register("QueryUser", QueryUser)
+	go srv.Run()
+
+	// startClient
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+	cli := NewClient(conn)
+
+	var Query func(int) (User, error)
+	cli.callRPC("QueryUser", &Query)
+
+	u, err := Query(1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(u)
+
+	u2, err := Query(8)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(u2)
+}
+```
+
+Output
+
+```
+2019/07/23 20:26:18 func QueryUser is called
+{Ankur 85}
+2019/07/23 20:26:18 func QueryUser is called
+{Ankur Anand 27}
+```
