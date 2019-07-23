@@ -347,3 +347,7 @@ Output
 2019/07/23 20:26:18 func QueryUser is called
 {Ankur Anand 27}
 ```
+
+**Note**: Since everything is in main package you need to pass every file to run and test this
+
+`go run transport.go RPCdata.go RPCServer.go RPCClient.go main.go`
