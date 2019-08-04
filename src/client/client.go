@@ -1,9 +1,12 @@
-package main
+package client
 
 import (
 	"errors"
 	"net"
 	"reflect"
+
+	"github.com/ankur-anand/simple-go-rpc/src/dataserial"
+	"github.com/ankur-anand/simple-go-rpc/src/transport"
 )
 
 // Client struct
@@ -16,10 +19,11 @@ func NewClient(conn net.Conn) *Client {
 	return &Client{conn}
 }
 
-func (c *Client) callRPC(rpcName string, fPtr interface{}) {
+// CallRPC Method
+func (c *Client) CallRPC(rpcName string, fPtr interface{}) {
 	container := reflect.ValueOf(fPtr).Elem()
 	f := func(req []reflect.Value) []reflect.Value {
-		cReqTransport := NewTransport(c.conn)
+		cReqTransport := transport.NewTransport(c.conn)
 		errorHandler := func(err error) []reflect.Value {
 			outArgs := make([]reflect.Value, container.Type().NumOut())
 			for i := 0; i < len(outArgs)-1; i++ {
@@ -36,8 +40,8 @@ func (c *Client) callRPC(rpcName string, fPtr interface{}) {
 		}
 
 		// ReqRPC
-		reqRPC := RPCdata{Name: rpcName, Args: inArgs}
-		b, err := Encode(reqRPC)
+		reqRPC := dataserial.RPCdata{Name: rpcName, Args: inArgs}
+		b, err := dataserial.Encode(reqRPC)
 		if err != nil {
 			panic(err)
 		}
@@ -50,7 +54,7 @@ func (c *Client) callRPC(rpcName string, fPtr interface{}) {
 		if err != nil { // local network error or decode error
 			return errorHandler(err)
 		}
-		rspDecode, _ := Decode(rsp)
+		rspDecode, _ := dataserial.Decode(rsp)
 		if rspDecode.Err != "" { // remote server error
 			return errorHandler(errors.New(rspDecode.Err))
 		}
@@ -58,17 +62,17 @@ func (c *Client) callRPC(rpcName string, fPtr interface{}) {
 		if len(rspDecode.Args) == 0 {
 			rspDecode.Args = make([]interface{}, container.Type().NumOut())
 		}
-		// unpackage response arguments
+		// unpack response arguments
 		numOut := container.Type().NumOut()
 		outArgs := make([]reflect.Value, numOut)
 		for i := 0; i < numOut; i++ {
-			if i != numOut-1 { // unpackage arguments (except error)
+			if i != numOut-1 { // unpack arguments (except error)
 				if rspDecode.Args[i] == nil { // if argument is nil (gob will ignore "Zero" in transmission), set "Zero" value
 					outArgs[i] = reflect.Zero(container.Type().Out(i))
 				} else {
 					outArgs[i] = reflect.ValueOf(rspDecode.Args[i])
 				}
-			} else { // unpackage error argument
+			} else { // unpack error argument
 				outArgs[i] = reflect.Zero(container.Type().Out(i))
 			}
 		}
