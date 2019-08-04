@@ -4,6 +4,10 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
+
+	"github.com/ankur-anand/simple-go-rpc/src/client"
+
+	"github.com/ankur-anand/simple-go-rpc/src/server"
 )
 
 type User struct {
@@ -29,7 +33,7 @@ func main() {
 	// new Type needs to be registered
 	gob.Register(User{})
 	addr := "localhost:3212"
-	srv := NewServer(addr)
+	srv := server.NewServer(addr)
 
 	// start server
 	srv.Register("QueryUser", QueryUser)
@@ -40,10 +44,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cli := NewClient(conn)
+	cli := client.NewClient(conn)
 
 	var Query func(int) (User, error)
-	cli.callRPC("QueryUser", &Query)
+	cli.CallRPC("QueryUser", &Query)
 
 	u, err := Query(1)
 	if err != nil {
