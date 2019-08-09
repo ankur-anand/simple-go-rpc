@@ -200,9 +200,9 @@ func (s *RPCServer) Execute(req RPCdata) RPCdata {
 
 	// pack error argument
 	var er string
-	if _, ok := out[len(out) - 1].Interface().(error); ok {
+	if e, ok := out[len(out) - 1].Interface().(error); ok {
 		// convert the error into error string value
-		e = out[len(out)-1].Interface().(error).Error()
+		er = e.Error()
 	}
 	return RPCdata{Name: req.Name, Args: resArgs, Err: er}
 }
@@ -239,7 +239,7 @@ func (c *Client) callRPC(rpcName string, fPtr interface{}) {
 		}
 		err = cReqTransport.Send(b)
 		if err != nil {
-			errorHandler(err)
+			return errorHandler(err)
 		}
 		// receive response from server
 		rsp, err := cReqTransport.Read()
@@ -315,7 +315,10 @@ func main() {
 	srv.Register("QueryUser", QueryUser)
 	go srv.Run()
 
-	// startClient
+	// wait for server to start.
+	time.Sleep(1 * time.Second)
+
+	// start client
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		panic(err)

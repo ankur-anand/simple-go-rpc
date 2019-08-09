@@ -47,7 +47,7 @@ func (c *Client) CallRPC(rpcName string, fPtr interface{}) {
 		}
 		err = cReqTransport.Send(b)
 		if err != nil {
-			errorHandler(err)
+			return errorHandler(err)
 		}
 		// receive response from server
 		rsp, err := cReqTransport.Read()

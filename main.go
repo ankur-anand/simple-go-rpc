@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/ankur-anand/simple-go-rpc/src/client"
 
@@ -39,7 +40,10 @@ func main() {
 	srv.Register("QueryUser", QueryUser)
 	go srv.Run()
 
-	// startClient
+	// wait for server to start.
+	time.Sleep(1 * time.Second)
+
+	// start client
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		panic(err)
