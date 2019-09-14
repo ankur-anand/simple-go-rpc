@@ -69,7 +69,7 @@ type RPCdata struct {
 }
 ```
 
-So now that we an format, we need to serialize this so that we can send it over the network.
+So now that we have a format, we need to serialize this so that we can send it over the network.
 In our case we will use the `go` default binary serialization protocol for encoding and decoding.
 
 ```go
