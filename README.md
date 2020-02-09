@@ -1,14 +1,14 @@
-## Simple GoRpc
+## Simple GoRPC
 
 Learning RPC basic building blocks by building a simple RPC framework in Golang from scratch.
 
 ## RPC
 
-In Simple Term **Service A** wants to call **Service B** functions. But those two services are not in the same memory space. so it cannot be called directly.
+In Simple Term **Service A** wants to call **Service B** functions. But those two services are not in the same memory space. So it cannot be called directly.
 
-So In Order to make this call happens we need to express the semantics of how to call and also how to pass the communication through the network.
+So, in order to make this call happen, we need to express the semantics of how to call and also how to pass the communication through the network.
 
-### Let's think what we do when we can function in the same memory space (localcall.)
+### Let's think what we do when we call function in the same memory space (local call)
 
 ```go
 type User struct {
@@ -43,11 +43,11 @@ func main() {
 }
 ```
 
-Now How does we do the same function call over the network.
+Now, how do we do the same function call over the network?
 
-**Client** will call _QueryUser(id int)_ function over the network and There will be one server which will Serve the Call to this function and return the Response _User{"Name", id}, nil_.
+**Client** will call _QueryUser(id int)_ function over the network and there will be one server which will Serve the Call to this function and return the Response _User{"Name", id}, nil_.
 
-## NeTwork Transmission Data format.
+## Network Transmission Data format.
 
 Simple-gorpc will do TLV (fixed-length header + variable-length message body) encoding scheme to regulate the transmission of data, over the tcp.
 **More on this later**
@@ -56,7 +56,10 @@ Simple-gorpc will do TLV (fixed-length header + variable-length message body) en
 
 This helps us to define a common protocol that, the client and server both can understand. (protobuf IDL define what both server and client understand).
 
-### So data received by the server needs to have, the name of the function to be called and list of parameters, or data from the client needs to pass those.
+### So data received by the server needs to have:
+
+- the name of the function to be called
+- list of parameters to be passed to that function
 
 Also let's agree that the second return value is of type error, indicating the RPC call result.
 
@@ -97,7 +100,7 @@ func Decode(b []byte) (RPCdata, error) {
 
 ### Network Transmission
 
-The Reason for choosing the TLV protocol is due to the fact that it's very simple to implement, and it also fullfill our need over identification of the length of data to read, as we need to identify the number of bytes to read for this request over the stream of incoming request. `Send and Receive does the same`
+The reason for choosing the TLV protocol is due to the fact that it's very simple to implement, and it also fullfills our need over identification of the length of data to read, as we need to identify the number of bytes to read for this request over the stream of incoming request. `Send and Receive does the same`
 
 ```go
 // Transport will use TLV protocol
@@ -207,6 +210,7 @@ func (s *RPCServer) Execute(req RPCdata) RPCdata {
 	return RPCdata{Name: req.Name, Args: resArgs, Err: er}
 }
 ```
+
 ## RPC CLIENT
 
 Since the concrete implementation of the function is on the server side, the client only has the prototype of the function, so we need complete prototype of the calling function, so that we can call it.
